@@ -1,29 +1,43 @@
 import os
 import sys  # sys нужен для передачи argv в QApplication
 from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtCore import QThread
+
 import config
 import design  # Это наш конвертированный файл дизайна
 
 
-class Starter_VM(QtCore.QObject):
-    addItem = QtCore.pyqtSignal(str)
+class Starter_VM(QThread):
+    def __init__(self, wizard_starter, parent=None):
+        super().__init__()
+        self.wizard_starter = wizard_starter
 
-    def start_VM(self):
-        self.addItem.emit("Start")
-        status_vm = os.system("vboxmanage startvm \"%s\" --type headless" % config.DOCKER_MACHINE_NAME)
-        if status_vm == 0:
+    def run(self):
+        self.wizard_starter.Stop.setDisabled(True)
+        self.wizard_starter.status_vm = os.system(
+            "vboxmanage startvm \"%s\" --type headless" % config.DOCKER_MACHINE_NAME)
+        if self.wizard_starter.status_vm == 0:
+            self.wizard_starter.Stop.setEnabled(True)
 
+
+class Starter_DB(QThread):
+    def __init__(self, wizard_starter, parent=None):
+        super().__init__()
+        self.wizard_starter = wizard_starter
+
+    def run(self):
+        if self.wizard_starter.self.status_vm == 0:
             while os.system("docker info") == None:
                 pass
+            self.wizard_starter.status_db = os.system("docker start wizards")
 
-            status_db = os.system("docker start wizards")
-            print(status_db)
-            os.system("echo docker start server")
-            os.system("echo docker start proxy")
-            os.system("echo docker start client")
 
-    def stop_VM(self):
-        self.addItem.emit("Stop")
+class Stop_VM(QThread):
+    def __init__(self, wizard_starter, parent=None):
+        super().__init__()
+        self.wizard_starter = wizard_starter
+
+    def run(self):
         os.system("vboxmanage controlvm \"%s\" poweroff" % config.DOCKER_MACHINE_NAME)
 
 
@@ -36,20 +50,23 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.Start.clicked.connect(self.start_app)
         self.Stop.clicked.connect(self.stop_app)
 
-        self.thread = QtCore.QThread()
-        self.starter_VM = Starter_VM()
-        self.starter_VM.moveToThread(self.thread)
-        self.starter_VM.addItem.connect(self.add_item)
-        self.thread.started.connect(self.starter_VM.start_VM)
-        self.thread.finished.connect(self.starter_VM.stop_VM)
+        self.status_vm = None
+        self.status_db = None
+        self.status_s = None
+        self.status_p = None
+        self.status_c = None
+
+        self.Starter_VM = Starter_VM(wizard_starter=self)
+        self.Starter_DB = Starter_DB(wizard_starter=self)
+        self.Stop_VM = Stop_VM(wizard_starter=self)
 
     def start_app(self):
         self.Start.setDisabled(True)
-        self.thread.start()
+        self.Starter_VM.start()
 
     def stop_app(self):
         self.Start.setEnabled(True)
-        self.thread.quit()
+        self.Stop_VM.start()
 
     def add_item(self, string):
         self.Info.addItem(string)

@@ -1,8 +1,12 @@
 import os
 import sys  # sys нужен для передачи argv в QApplication
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import QThread
 import webbrowser
+
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QListWidgetItem
+
 import config
 import design  # Это наш конвертированный файл дизайна
 
@@ -14,12 +18,20 @@ class Starter_VM(QThread):
 
     def run(self):
         self.wizard_starter.Stop.setDisabled(True)
+        item = QListWidgetItem("Waiting for VM \"%s\" to power on..." % config.DOCKER_MACHINE_NAME)
+        item.setForeground(QColor("ORANGE"))
+        self.wizard_starter.Info.addItem(item)
+
         self.wizard_starter.status_vm = os.system(
             "vboxmanage startvm \"%s\" --type headless" % config.DOCKER_MACHINE_NAME)
         if self.wizard_starter.status_vm == 0:
             self.wizard_starter.Stop.setEnabled(True)
             self.wizard_starter.Database.setEnabled(True)
             self.wizard_starter.Start.setDisabled(True)
+
+            item1 = QListWidgetItem("VM \"%s\" has been successfully started." % config.DOCKER_MACHINE_NAME)
+            item1.setForeground(QColor("GREEN"))
+            self.wizard_starter.Info.addItem(item1)
 
 
 class Starter_DB(QThread):
@@ -31,6 +43,10 @@ class Starter_DB(QThread):
         self.wizard_starter.Start.setDisabled(True)
         self.wizard_starter.Stop.setDisabled(True)
 
+        item = QListWidgetItem("Waiting for Database \"wizards\" to power on...")
+        item.setForeground(QColor("ORANGE"))
+        self.wizard_starter.Info.addItem(item)
+
         if self.wizard_starter.status_vm == 0:
             while os.system("docker info") == None:
                 pass
@@ -38,6 +54,9 @@ class Starter_DB(QThread):
             if self.wizard_starter.status_db == 0:
                 self.wizard_starter.Database.setDisabled(True)
                 self.wizard_starter.Server.setEnabled(True)
+                item1 = QListWidgetItem("Database \"wizards\" has been successfully started.")
+                item1.setForeground(QColor("GREEN"))
+                self.wizard_starter.Info.addItem(item1)
             self.wizard_starter.Stop.setEnabled(True)
 
 class Starter_S(QThread):
@@ -46,10 +65,18 @@ class Starter_S(QThread):
         self.wizard_starter = wizard_starter
     def run(self):
         self.wizard_starter.Stop.setDisabled(True)
+
+        item = QListWidgetItem("Waiting for Server \"WizardApp\" to power on...")
+        item.setForeground(QColor("ORANGE"))
+        self.wizard_starter.Info.addItem(item)
+
         if self.wizard_starter.status_db == 0:
             self.wizard_starter.status_s = os.system("docker run -d --rm -p 8080:8080 --name wizard-app wizard")
             self.wizard_starter.Stop.setEnabled(True)
             self.wizard_starter.Proxy.setEnabled(True)
+            item1 = QListWidgetItem("Server \"WizardApp\" has been successfully started.")
+            item1.setForeground(QColor("GREEN"))
+            self.wizard_starter.Info.addItem(item1)
 
 class Starter_P(QThread):
     def __init__(self, wizard_starter, parent=None):
@@ -57,10 +84,18 @@ class Starter_P(QThread):
         self.wizard_starter = wizard_starter
     def run(self):
         self.wizard_starter.Stop.setDisabled(True)
+
+        item = QListWidgetItem("Waiting for Proxy \"WizardAppGrapQL\" to power on...")
+        item.setForeground(QColor("ORANGE"))
+        self.wizard_starter.Info.addItem(item)
+
         if self.wizard_starter.status_s == 0:
             self.wizard_starter.status_p = os.system("docker run -d --rm -p 8081:8081/tcp --name my-running-app my-golang-app")
             self.wizard_starter.Stop.setEnabled(True)
             self.wizard_starter.Client.setEnabled(True)
+            item1 = QListWidgetItem("Proxy \"WizardAppGrapQL\" has been successfully started.")
+            item1.setForeground(QColor("GREEN"))
+            self.wizard_starter.Info.addItem(item1)
 
 class Starter_C(QThread):
     def __init__(self, wizard_starter, parent=None):
@@ -68,11 +103,19 @@ class Starter_C(QThread):
         self.wizard_starter = wizard_starter
     def run(self):
         self.wizard_starter.Stop.setDisabled(True)
+
+        item = QListWidgetItem("Waiting for Client \"WizardAppFront\" to power on...")
+        item.setForeground(QColor("ORANGE"))
+        self.wizard_starter.Info.addItem(item)
+
         if self.wizard_starter.status_p == 0:
             self.wizard_starter.status_c = os.system("docker run -d --rm -p 3000:3000/tcp --name wizard-front-app wizard-front")
             webbrowser.open("http://192.168.99.102:3000/", new=0)
             self.wizard_starter.Stop.setEnabled(True)
             self.wizard_starter.Client.setEnabled(True)
+            item1 = QListWidgetItem("Client \"WizardAppFront\" has been successfully started.")
+            item1.setForeground(QColor("GREEN"))
+            self.wizard_starter.Info.addItem(item1)
 
 
 class Stop_VM(QThread):
@@ -81,6 +124,9 @@ class Stop_VM(QThread):
         self.wizard_starter = wizard_starter
 
     def run(self):
+        item = QListWidgetItem("VM \"%s\" has been successfully stopped." % config.DOCKER_MACHINE_NAME)
+        item.setForeground(QColor("RED"))
+        self.wizard_starter.Info.addItem(item)
         os.system("vboxmanage controlvm \"%s\" poweroff" % config.DOCKER_MACHINE_NAME)
         self.wizard_starter.Start.setEnabled(True)
 
@@ -110,6 +156,18 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.Starter_P = Starter_P(wizard_starter=self)
         self.Starter_C = Starter_C(wizard_starter=self)
         self.Stop_VM = Stop_VM(wizard_starter=self)
+
+        self.palette_black = QtGui.QPalette()
+        self.palette_black.setColor(QtGui.QPalette.Text, QtCore.Qt.black)
+        self.palette_yellow = QtGui.QPalette()
+        self.palette_yellow.setColor(QtGui.QPalette.Text, QtCore.Qt.darkYellow)
+        self.palette_green = QtGui.QPalette()
+        self.palette_green.setColor(QtGui.QPalette.Text, QtCore.Qt.gray)
+        self.palette_red = QtGui.QPalette()
+        self.palette_red.setColor(QtGui.QPalette.Text, QtCore.Qt.red)
+        self.palette_blue = QtGui.QPalette()
+        self.palette_blue.setColor(QtGui.QPalette.Text, QtCore.Qt.blue)
+
 
     def start(self):
         self.Starter_VM.start()

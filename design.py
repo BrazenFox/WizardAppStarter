@@ -105,7 +105,8 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowIcon(QtGui.QIcon('wizard.png'))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Wizard starter"))
         self.Stop.setText(_translate("MainWindow", "Stop"))
         self.ProxyPortText.setText(_translate("MainWindow", "Proxe port:"))
         self.ClientPortText.setText(_translate("MainWindow", "Client port:"))

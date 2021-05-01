@@ -142,4 +142,4 @@ def main():
 
 if __name__ == '__main__':  # Если мы запускаем файл напрямую, а не импортируем
     main()  # то запускаем функцию main()
-#pyinstaller --onefile --icon=1.ico --noconsole comment_reader.py
+#pyinstaller --onefile --icon=wizrard.ico --noconsole main.py

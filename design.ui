@@ -6,58 +6,163 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>358</width>
-    <height>600</height>
+    <width>355</width>
+    <height>439</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <widget class="QListWidget" name="Info"/>
-    </item>
-    <item>
-     <widget class="QLineEdit" name="ClientPort"/>
-    </item>
-    <item>
-     <widget class="QLineEdit" name="ProxyPort"/>
-    </item>
-    <item>
-     <widget class="QLineEdit" name="ServerPort"/>
-    </item>
-    <item>
-     <widget class="QPushButton" name="Start">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="5" column="0">
+     <widget class="QPushButton" name="Stop">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="font">
        <font>
-        <family>Segoe UI</family>
         <weight>75</weight>
         <bold>true</bold>
        </font>
       </property>
       <property name="styleSheet">
-       <string notr="true"> background-color: rgb(0, 255, 0)</string>
+       <string notr="true">background-color:rgb(195, 0, 0)</string>
+      </property>
+      <property name="text">
+       <string>Stop</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="0">
+     <widget class="QLabel" name="ProxyPortText">
+      <property name="font">
+       <font>
+        <weight>50</weight>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>Proxe port:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="1">
+     <widget class="QLineEdit" name="ProxyPortInput"/>
+    </item>
+    <item row="8" column="0">
+     <widget class="QLabel" name="ClientPortText">
+      <property name="text">
+       <string>Client port:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="1">
+     <widget class="QLineEdit" name="ServerPortInput">
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="1">
+     <widget class="QLineEdit" name="ClientPortInput"/>
+    </item>
+    <item row="6" column="0">
+     <widget class="QLabel" name="ServerPortText">
+      <property name="font">
+       <font>
+        <weight>50</weight>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>Server port:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QPushButton" name="Database">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="font">
+       <font>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
+      <property name="text">
+       <string>Database</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QPushButton" name="Start">
+      <property name="font">
+       <font>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color:rgb(67, 255, 67)</string>
       </property>
       <property name="text">
        <string>Start</string>
       </property>
      </widget>
     </item>
-    <item>
-     <widget class="QPushButton" name="Stop">
+    <item row="0" column="1" rowspan="6">
+     <widget class="QListWidget" name="Info"/>
+    </item>
+    <item row="2" column="0">
+     <widget class="QPushButton" name="Server">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="font">
        <font>
-        <pointsize>9</pointsize>
         <weight>75</weight>
         <bold>true</bold>
        </font>
       </property>
-      <property name="styleSheet">
-       <string notr="true"> background-color: rgb(255, 0, 0)</string>
+      <property name="text">
+       <string>Server</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0">
+     <widget class="QPushButton" name="Proxy">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="font">
+       <font>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
       </property>
       <property name="text">
-       <string>Stop</string>
+       <string>Proxy</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QPushButton" name="Client">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="font">
+       <font>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>Client</string>
       </property>
      </widget>
     </item>

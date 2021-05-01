@@ -2,7 +2,7 @@ import os
 import sys  # sys нужен для передачи argv в QApplication
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import QThread
-
+import webbrowser
 import config
 import design  # Это наш конвертированный файл дизайна
 
@@ -18,6 +18,8 @@ class Starter_VM(QThread):
             "vboxmanage startvm \"%s\" --type headless" % config.DOCKER_MACHINE_NAME)
         if self.wizard_starter.status_vm == 0:
             self.wizard_starter.Stop.setEnabled(True)
+            self.wizard_starter.Database.setEnabled(True)
+            self.wizard_starter.Start.setDisabled(True)
 
 
 class Starter_DB(QThread):
@@ -26,10 +28,51 @@ class Starter_DB(QThread):
         self.wizard_starter = wizard_starter
 
     def run(self):
-        if self.wizard_starter.self.status_vm == 0:
+        self.wizard_starter.Start.setDisabled(True)
+        self.wizard_starter.Stop.setDisabled(True)
+
+        if self.wizard_starter.status_vm == 0:
             while os.system("docker info") == None:
                 pass
             self.wizard_starter.status_db = os.system("docker start wizards")
+            if self.wizard_starter.status_db == 0:
+                self.wizard_starter.Database.setDisabled(True)
+                self.wizard_starter.Server.setEnabled(True)
+            self.wizard_starter.Stop.setEnabled(True)
+
+class Starter_S(QThread):
+    def __init__(self, wizard_starter, parent=None):
+        super().__init__()
+        self.wizard_starter = wizard_starter
+    def run(self):
+        self.wizard_starter.Stop.setDisabled(True)
+        if self.wizard_starter.status_db == 0:
+            self.wizard_starter.status_s = os.system("docker run -d --rm -p 8080:8080 --name wizard-app wizard")
+            self.wizard_starter.Stop.setEnabled(True)
+            self.wizard_starter.Proxy.setEnabled(True)
+
+class Starter_P(QThread):
+    def __init__(self, wizard_starter, parent=None):
+        super().__init__()
+        self.wizard_starter = wizard_starter
+    def run(self):
+        self.wizard_starter.Stop.setDisabled(True)
+        if self.wizard_starter.status_s == 0:
+            self.wizard_starter.status_p = os.system("docker run -d --rm -p 8081:8081/tcp --name my-running-app my-golang-app")
+            self.wizard_starter.Stop.setEnabled(True)
+            self.wizard_starter.Client.setEnabled(True)
+
+class Starter_C(QThread):
+    def __init__(self, wizard_starter, parent=None):
+        super().__init__()
+        self.wizard_starter = wizard_starter
+    def run(self):
+        self.wizard_starter.Stop.setDisabled(True)
+        if self.wizard_starter.status_p == 0:
+            self.wizard_starter.status_c = os.system("docker run -d --rm -p 3000:3000/tcp --name wizard-front-app wizard-front")
+            webbrowser.open("http://192.168.99.102:3000/", new=0)
+            self.wizard_starter.Stop.setEnabled(True)
+            self.wizard_starter.Client.setEnabled(True)
 
 
 class Stop_VM(QThread):
@@ -39,6 +82,7 @@ class Stop_VM(QThread):
 
     def run(self):
         os.system("vboxmanage controlvm \"%s\" poweroff" % config.DOCKER_MACHINE_NAME)
+        self.wizard_starter.Start.setEnabled(True)
 
 
 class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -47,8 +91,12 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
         # и т.д. в файле design.py
         super().__init__()
         self.setupUi(self)  # Это нужно для инициализации нашего дизайна
-        self.Start.clicked.connect(self.start_app)
-        self.Stop.clicked.connect(self.stop_app)
+        self.Start.clicked.connect(self.start)
+        self.Database.clicked.connect(self.database)
+        self.Server.clicked.connect(self.server)
+        self.Proxy.clicked.connect(self.proxy)
+        self.Client.clicked.connect(self.client)
+        self.Stop.clicked.connect(self.stop)
 
         self.status_vm = None
         self.status_db = None
@@ -58,14 +106,27 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.Starter_VM = Starter_VM(wizard_starter=self)
         self.Starter_DB = Starter_DB(wizard_starter=self)
+        self.Starter_S = Starter_S(wizard_starter=self)
+        self.Starter_P = Starter_P(wizard_starter=self)
+        self.Starter_C = Starter_C(wizard_starter=self)
         self.Stop_VM = Stop_VM(wizard_starter=self)
 
-    def start_app(self):
-        self.Start.setDisabled(True)
+    def start(self):
         self.Starter_VM.start()
 
-    def stop_app(self):
-        self.Start.setEnabled(True)
+    def database(self):
+        self.Starter_DB.start()
+
+    def server(self):
+        self.Starter_S.start()
+
+    def proxy(self):
+        self.Starter_P.start()
+
+    def client(self):
+        self.Starter_C.start()
+
+    def stop(self):
         self.Stop_VM.start()
 
     def add_item(self, string):
@@ -81,3 +142,4 @@ def main():
 
 if __name__ == '__main__':  # Если мы запускаем файл напрямую, а не импортируем
     main()  # то запускаем функцию main()
+#pyinstaller --onefile --icon=1.ico --noconsole comment_reader.py

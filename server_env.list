@@ -1,0 +1,5 @@
+URLDTBS=jdbc:postgresql://192.168.99.102:5432/wizards1
+USR=postgres
+PASSWORD=postgres
+SECRET=wizardSecretKey
+EXPIRED=86400000

@@ -108,7 +108,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowIcon(QtGui.QIcon('wizard.png'))
         MainWindow.setWindowTitle(_translate("MainWindow", "Wizard starter"))
         self.Stop.setText(_translate("MainWindow", "Stop"))
-        self.ProxyPortText.setText(_translate("MainWindow", "Proxe port:"))
+        self.ProxyPortText.setText(_translate("MainWindow", "Proxy port:"))
         self.ClientPortText.setText(_translate("MainWindow", "Client port:"))
         self.ServerPortText.setText(_translate("MainWindow", "Server port:"))
         self.Database.setText(_translate("MainWindow", "Database"))

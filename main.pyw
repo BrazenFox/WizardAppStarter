@@ -206,12 +206,15 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
 
         self.ENVURL = ''
         self.ENVINURL = ''
+        self.ENVPORT = ''
 
         self.PROXY = ''
         self.SERVER_URL = ''
 
         self.read_settings()
         self.write_server_env()
+        self.write_proxy_env()
+        self.write_client_env()
 
     def start(self):
         self.Starter_VM.start()
@@ -283,26 +286,37 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
         with open('settings.txt') as json_file:
             data = json.load(json_file)
             server = data['server']
-            print('URLDTBS=' + server['URLDTBS'])
-            print('USR=' + server['USR'])
-            print('PASSWORD=' + server['PASSWORD'])
-            print('SECRET=' + server['SECRET'])
-            print('EXPIRED=' + server['EXPIRED'])
+            self.URLDTBS = 'URLDTBS=' + server['URLDTBS']
+            self.USR = 'USR=' + server['USR']
+            self.PASSWORD = 'PASSWORD=' + server['PASSWORD']
+            self.SECRET = 'SECRET=' + server['SECRET']
+            self.EXPIRED = 'EXPIRED=' + server['EXPIRED']
             proxy = data['proxy']
-            print('ENVURL=' + proxy['ENVURL'])
-            print('ENVINURL=' + proxy['ENVINURL'])
+            self.ENVURL = 'ENVURL=' + proxy['ENVURL']
+            self.ENVINURL = 'ENVINURL=' + proxy['ENVINURL']
+            self.ENVPORT = 'ENVPORT=' + proxy['ENVPORT']
             client = data['client']
-            print('PROXY=' + client['PROXY'])
-            print('SERVER_URL=' + client['SERVER_URL'])
+            self.PROXY = 'PROXY=' + client['PROXY']
+            self.SERVER_URL = 'SERVER_URL=' + client['SERVER_URL']
 
     def write_server_env(self):
         server_env = open('server_env.list', 'w')
+        server_env.write(self.URLDTBS + '\n')
+        server_env.write(self.USR + '\n')
+        server_env.write(self.PASSWORD + '\n')
+        server_env.write(self.SECRET + '\n')
+        server_env.write(self.EXPIRED + '\n')
 
     def write_proxy_env(self):
         proxy_env = open('proxy_env.list', 'w')
+        proxy_env.write(self.ENVURL + '\n')
+        proxy_env.write(self.ENVINURL + '\n')
+        proxy_env.write(self.ENVPORT + '\n')
 
     def write_client_env(self):
         client_env = open('client_env.list', 'w')
+        client_env.write(self.PROXY + '\n')
+        client_env.write(self.SERVER_URL + '\n')
 
 
 def main():

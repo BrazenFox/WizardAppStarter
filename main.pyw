@@ -1,14 +1,25 @@
 import os
-import sys  # sys нужен для передачи argv в QApplication
+import sys
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import QThread
 import webbrowser
-
+import json
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
 
+from enum import Enum
+
 import config
-import design  # Это наш конвертированный файл дизайна
+import design
+
+
+class Buttons(Enum):
+    START = "START"
+    DB = "DB"
+    S = "S"
+    P = "P"
+    C = "C"
+    STOP = "STOP"
 
 
 class Starter_VM(QThread):
@@ -17,21 +28,19 @@ class Starter_VM(QThread):
         self.wizard_starter = wizard_starter
 
     def run(self):
-        self.wizard_starter.Stop.setDisabled(True)
-        item = QListWidgetItem("Waiting for VM \"%s\" to power on..." % config.DOCKER_MACHINE_NAME)
-        item.setForeground(QColor("ORANGE"))
-        self.wizard_starter.Info.addItem(item)
+        self.wizard_starter \
+            .switch_buttons("ALL", False)
 
+        self.wizard_starter.add_item("Waiting for VM \"%s\" to power on..." % config.DOCKER_MACHINE_NAME, "ORANGE")
         self.wizard_starter.status_vm = os.system(
             "vboxmanage startvm \"%s\" --type headless" % config.DOCKER_MACHINE_NAME)
         if self.wizard_starter.status_vm == 0:
-            self.wizard_starter.Stop.setEnabled(True)
-            self.wizard_starter.Database.setEnabled(True)
-            self.wizard_starter.Start.setDisabled(True)
-
-            item1 = QListWidgetItem("VM \"%s\" has been successfully started." % config.DOCKER_MACHINE_NAME)
-            item1.setForeground(QColor("GREEN"))
-            self.wizard_starter.Info.addItem(item1)
+            self.wizard_starter \
+                .switch_buttons([Buttons.STOP, Buttons.DB], True)
+            self.wizard_starter \
+                .add_item("VM \"%s\" has been successfully started." % config.DOCKER_MACHINE_NAME, "GREEN")
+        else:
+            self.wizard_starter.vm_not_started()
 
 
 class Starter_DB(QThread):
@@ -40,82 +49,106 @@ class Starter_DB(QThread):
         self.wizard_starter = wizard_starter
 
     def run(self):
-        self.wizard_starter.Start.setDisabled(True)
-        self.wizard_starter.Stop.setDisabled(True)
-
-        item = QListWidgetItem("Waiting for Database \"wizards\" to power on...")
-        item.setForeground(QColor("ORANGE"))
-        self.wizard_starter.Info.addItem(item)
-
+        self.wizard_starter \
+            .switch_buttons("ALL", False)
         if self.wizard_starter.status_vm == 0:
+            self.wizard_starter \
+                .add_item("Waiting for Database \"wizards\" to power on...", "ORANGE")
+
             while os.system("docker info") == None:
                 pass
             self.wizard_starter.status_db = os.system("docker start wizards")
             if self.wizard_starter.status_db == 0:
-                self.wizard_starter.Database.setDisabled(True)
-                self.wizard_starter.Server.setEnabled(True)
-                item1 = QListWidgetItem("Database \"wizards\" has been successfully started.")
-                item1.setForeground(QColor("GREEN"))
-                self.wizard_starter.Info.addItem(item1)
-            self.wizard_starter.Stop.setEnabled(True)
+                self.wizard_starter \
+                    .switch_buttons([Buttons.S, Buttons.STOP], True)
+                self.wizard_starter \
+                    .add_item("Database \"wizards\" has been successfully started.", "GREEN")
+            else:
+                self.wizard_starter.database_not_started()
+        else:
+            self.wizard_starter.vm_not_started()
+
 
 class Starter_S(QThread):
     def __init__(self, wizard_starter, parent=None):
         super().__init__()
         self.wizard_starter = wizard_starter
+
     def run(self):
-        self.wizard_starter.Stop.setDisabled(True)
-
-        item = QListWidgetItem("Waiting for Server \"WizardApp\" to power on...")
-        item.setForeground(QColor("ORANGE"))
-        self.wizard_starter.Info.addItem(item)
-
-        if self.wizard_starter.status_db == 0:
+        self.wizard_starter \
+            .switch_buttons("ALL", False)
+        if self.wizard_starter.status_vm == 0 and self.wizard_starter.status_db == 0:
+            self.wizard_starter.add_item("Waiting for Server \"WizardApp\" to power on...", "ORANGE")
             self.wizard_starter.status_s = os.system("docker run -d --rm -p 8080:8080 --name wizard-app wizard")
-            self.wizard_starter.Stop.setEnabled(True)
-            self.wizard_starter.Proxy.setEnabled(True)
-            item1 = QListWidgetItem("Server \"WizardApp\" has been successfully started.")
-            item1.setForeground(QColor("GREEN"))
-            self.wizard_starter.Info.addItem(item1)
+            if self.wizard_starter.status_s == 0:
+                self.wizard_starter \
+                    .switch_buttons([Buttons.P, Buttons.STOP], True)
+                self.wizard_starter.add_item("Server \"WizardApp\" has been successfully started.", "GREEN")
+            else:
+                self.wizard_starter.server_not_started()
+        else:
+            if self.wizard_starter.status_vm != 0:
+                self.wizard_starter.vm_not_started()
+            else:
+                self.wizard_starter.database_not_started()
+
 
 class Starter_P(QThread):
     def __init__(self, wizard_starter, parent=None):
         super().__init__()
         self.wizard_starter = wizard_starter
+
     def run(self):
-        self.wizard_starter.Stop.setDisabled(True)
+        self.wizard_starter \
+            .switch_buttons("ALL", False)
+        if self.wizard_starter.status_vm == 0 and self.wizard_starter.status_db == 0 and self.wizard_starter.status_s == 0:
+            self.wizard_starter.add_item("Waiting for Proxy \"WizardAppGrapQL\" to power on...", "ORANGE")
+            self.wizard_starter.status_p = os.system(
+                "docker run -d --rm -p 8081:8081/tcp --name my-running-app my-golang-app")
+            if self.wizard_starter.status_p == 0:
+                self.wizard_starter.add_item("Proxy \"WizardAppGrapQL\" has been successfully started.", "GREEN")
+                self.wizard_starter \
+                    .switch_buttons([Buttons.C, Buttons.STOP], True)
+            else:
+                self.wizard_starter.proxy_not_started()
+        else:
+            if self.wizard_starter.status_vm != 0:
+                self.wizard_starter.vm_not_started()
+            elif self.wizard_starter.status_db != 0:
+                self.wizard_starter.database_not_started()
+            else:
+                self.wizard_starter.server_not_started()
 
-        item = QListWidgetItem("Waiting for Proxy \"WizardAppGrapQL\" to power on...")
-        item.setForeground(QColor("ORANGE"))
-        self.wizard_starter.Info.addItem(item)
-
-        if self.wizard_starter.status_s == 0:
-            self.wizard_starter.status_p = os.system("docker run -d --rm -p 8081:8081/tcp --name my-running-app my-golang-app")
-            self.wizard_starter.Stop.setEnabled(True)
-            self.wizard_starter.Client.setEnabled(True)
-            item1 = QListWidgetItem("Proxy \"WizardAppGrapQL\" has been successfully started.")
-            item1.setForeground(QColor("GREEN"))
-            self.wizard_starter.Info.addItem(item1)
 
 class Starter_C(QThread):
     def __init__(self, wizard_starter, parent=None):
         super().__init__()
         self.wizard_starter = wizard_starter
+
     def run(self):
-        self.wizard_starter.Stop.setDisabled(True)
+        self.wizard_starter \
+            .switch_buttons("ALL", False)
+        self.wizard_starter.add_item("Waiting for Client \"WizardAppFront\" to power on...", "ORANGE")
 
-        item = QListWidgetItem("Waiting for Client \"WizardAppFront\" to power on...")
-        item.setForeground(QColor("ORANGE"))
-        self.wizard_starter.Info.addItem(item)
-
-        if self.wizard_starter.status_p == 0:
-            self.wizard_starter.status_c = os.system("docker run -d --rm -p 3000:3000/tcp --name wizard-front-app wizard-front")
-            webbrowser.open("http://192.168.99.102:3000/", new=0)
-            self.wizard_starter.Stop.setEnabled(True)
-            self.wizard_starter.Client.setEnabled(True)
-            item1 = QListWidgetItem("Client \"WizardAppFront\" has been successfully started.")
-            item1.setForeground(QColor("GREEN"))
-            self.wizard_starter.Info.addItem(item1)
+        if self.wizard_starter.status_vm == 0 and self.wizard_starter.status_db == 0 and self.wizard_starter.status_s == 0 and self.wizard_starter.status_p == 0:
+            self.wizard_starter.status_c = os.system(
+                "docker run -d --rm -p 3000:3000/tcp --name wizard-front-app wizard-front")
+            if self.wizard_starter.status_c == 0:
+                self.wizard_starter \
+                    .switch_buttons([Buttons.STOP], True)
+                webbrowser.open("http://192.168.99.102:3000/", new=0)
+                self.wizard_starter.add_item("Client \"WizardAppFront\" has been successfully started.", "GREEN")
+            else:
+                self.wizard_starter.client_not_started()
+        else:
+            if self.wizard_starter.status_vm != 0:
+                self.wizard_starter.vm_not_started()
+            elif self.wizard_starter.status_db != 0:
+                self.wizard_starter.database_not_started()
+            elif self.wizard_starter.status_s != 0:
+                self.wizard_starter.server_not_started()
+            else:
+                self.wizard_starter.proxy_not_started()
 
 
 class Stop_VM(QThread):
@@ -124,19 +157,23 @@ class Stop_VM(QThread):
         self.wizard_starter = wizard_starter
 
     def run(self):
-        item = QListWidgetItem("VM \"%s\" has been successfully stopped." % config.DOCKER_MACHINE_NAME)
-        item.setForeground(QColor("RED"))
-        self.wizard_starter.Info.addItem(item)
-        os.system("vboxmanage controlvm \"%s\" poweroff" % config.DOCKER_MACHINE_NAME)
-        self.wizard_starter.Start.setEnabled(True)
+        self.wizard_starter \
+            .switch_buttons("ALL", False)
+
+        status = os.system("vboxmanage controlvm \"%s\" poweroff" % config.DOCKER_MACHINE_NAME)
+        if status == 0:
+            self.wizard_starter.add_item("VM \"%s\" has been successfully stopped." % config.DOCKER_MACHINE_NAME, "RED")
+        else:
+            self.add_item("VM \"%s\" has not been stopped or already stopped." % config.DOCKER_MACHINE_NAME, "RED")
+
+        self.wizard_starter \
+            .switch_buttons([Buttons.STOP, Buttons.START], True)
 
 
 class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def __init__(self):
-        # Это здесь нужно для доступа к переменным, методам
-        # и т.д. в файле design.py
         super().__init__()
-        self.setupUi(self)  # Это нужно для инициализации нашего дизайна
+        self.setupUi(self)
         self.Start.clicked.connect(self.start)
         self.Database.clicked.connect(self.database)
         self.Server.clicked.connect(self.server)
@@ -157,17 +194,24 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.Starter_C = Starter_C(wizard_starter=self)
         self.Stop_VM = Stop_VM(wizard_starter=self)
 
-        self.palette_black = QtGui.QPalette()
-        self.palette_black.setColor(QtGui.QPalette.Text, QtCore.Qt.black)
-        self.palette_yellow = QtGui.QPalette()
-        self.palette_yellow.setColor(QtGui.QPalette.Text, QtCore.Qt.darkYellow)
-        self.palette_green = QtGui.QPalette()
-        self.palette_green.setColor(QtGui.QPalette.Text, QtCore.Qt.gray)
-        self.palette_red = QtGui.QPalette()
-        self.palette_red.setColor(QtGui.QPalette.Text, QtCore.Qt.red)
-        self.palette_blue = QtGui.QPalette()
-        self.palette_blue.setColor(QtGui.QPalette.Text, QtCore.Qt.blue)
+        self.server_settings = []
+        self.proxy_settings = []
+        self.client_settings = []
 
+        self.URLDTBS = ''
+        self.USR = ''
+        self.PASSWORD = ''
+        self.SECRET = ''
+        self.EXPIRED = ''
+
+        self.ENVURL = ''
+        self.ENVINURL = ''
+
+        self.PROXY = ''
+        self.SERVER_URL = ''
+
+        self.read_settings()
+        self.write_server_env()
 
     def start(self):
         self.Starter_VM.start()
@@ -187,17 +231,87 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
     def stop(self):
         self.Stop_VM.start()
 
-    def add_item(self, string):
-        self.Info.addItem(string)
+    def add_item(self, string, color):
+        item = QListWidgetItem(string)
+        item.setForeground(QColor(color))
+        self.Info.addItem(item)
+
+    def switch_buttons(self, array, case):
+        if array == "ALL":
+            self.Start.setDisabled(True) if not case else self.Start.setEnabled(True)
+            self.Database.setDisabled(True) if not case else self.Database.setEnabled(True)
+            self.Server.setDisabled(True) if not case else self.Server.setEnabled(True)
+            self.Proxy.setDisabled(True) if not case else self.Proxy.setEnabled(True)
+            self.Client.setDisabled(True) if not case else self.Client.setEnabled(True)
+            self.Stop.setDisabled(True) if not case else self.Stop.setEnabled(True)
+        else:
+            for i in array:
+                if i.name == "START":
+                    self.Start.setDisabled(True) if not case else self.Start.setEnabled(True)
+                if i.name == "DB":
+                    self.Database.setDisabled(True) if not case else self.Database.setEnabled(True)
+                if i.name == "S":
+                    self.Server.setDisabled(True) if not case else self.Server.setEnabled(True)
+                if i.name == "P":
+                    self.Proxy.setDisabled(True) if not case else self.Proxy.setEnabled(True)
+                if i.name == "C":
+                    self.Client.setDisabled(True) if not case else self.Client.setEnabled(True)
+                if i.name == "STOP":
+                    self.Stop.setDisabled(True) if not case else self.Stop.setEnabled(True)
+
+    def vm_not_started(self):
+        self.switch_buttons([Buttons.START, Buttons.STOP], True)
+        self.add_item("VM \"%s\" has not been started." % config.DOCKER_MACHINE_NAME, "RED")
+
+    def database_not_started(self):
+        self.switch_buttons([Buttons.DB, Buttons.STOP], True)
+        self.add_item("Database \"wizards\" has not been started.", "RED")
+
+    def server_not_started(self):
+        self.switch_buttons([Buttons.S, Buttons.STOP], True)
+        self.add_item("Server \"WizardApp\" has not been started.", "RED")
+
+    def proxy_not_started(self):
+        self.switch_buttons([Buttons.P, Buttons.STOP], True)
+        self.add_item("Proxy \"WizardAppGraphQL\" has not been started.", "RED")
+
+    def client_not_started(self):
+        self.switch_buttons([Buttons.C, Buttons.STOP], True)
+        self.add_item("Client \"WizardAppFront\" has not been started.", "RED")
+
+    def read_settings(self):
+        with open('settings.txt') as json_file:
+            data = json.load(json_file)
+            server = data['server']
+            print('URLDTBS=' + server['URLDTBS'])
+            print('USR=' + server['USR'])
+            print('PASSWORD=' + server['PASSWORD'])
+            print('SECRET=' + server['SECRET'])
+            print('EXPIRED=' + server['EXPIRED'])
+            proxy = data['proxy']
+            print('ENVURL=' + proxy['ENVURL'])
+            print('ENVINURL=' + proxy['ENVINURL'])
+            client = data['client']
+            print('PROXY=' + client['PROXY'])
+            print('SERVER_URL=' + client['SERVER_URL'])
+
+    def write_server_env(self):
+        server_env = open('server_env.list', 'w')
+
+    def write_proxy_env(self):
+        proxy_env = open('proxy_env.list', 'w')
+
+    def write_client_env(self):
+        client_env = open('client_env.list', 'w')
 
 
 def main():
-    app = QtWidgets.QApplication(sys.argv)  # Новый экземпляр QApplication
-    window = WizardStarter()  # Создаём объект класса ExampleApp
-    window.show()  # Показываем окно
-    app.exec_()  # и запускаем приложение
+    app = QtWidgets.QApplication(sys.argv)
+    window = WizardStarter()
+    window.show()
+    app.exec_()
 
 
-if __name__ == '__main__':  # Если мы запускаем файл напрямую, а не импортируем
-    main()  # то запускаем функцию main()
-#pyinstaller --onefile --icon=wizard.ico --noconsole main.pyw
+if __name__ == '__main__':
+    main()
+# pyinstaller --onefile --icon=wizard.ico --noconsole main.pyw

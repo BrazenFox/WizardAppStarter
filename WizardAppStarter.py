@@ -24,6 +24,7 @@ class Buttons(Enum):
     P = "P"
     C = "C"
     STOP = "STOP"
+    CHECK = "CHECK"
 
 
 class Starter_VM(QThread):
@@ -35,9 +36,16 @@ class Starter_VM(QThread):
         self.wizard_starter.switch_buttons("ALL", False)
         self.wizard_starter.add_item("Waiting for VM \"%s\" to power on..." % DOCKER_MACHINE_NAME, "ORANGE")
         self.wizard_starter.status_vm = os.system("vboxmanage startvm \"%s\" --type headless" % DOCKER_MACHINE_NAME)
+
         if self.wizard_starter.status_vm == 0:
+            while os.system(DOCKER_INFO) == None:
+                pass
             self.wizard_starter.switch_buttons([Buttons.STOP, Buttons.DB], True)
             self.wizard_starter.add_item("VM \"%s\" has been successfully started." % DOCKER_MACHINE_NAME, "GREEN")
+
+            if self.wizard_starter.AutomaticStart.checkState() == 2:
+
+                self.wizard_starter.database()
         else:
             self.wizard_starter.vm_not_started()
 
@@ -52,14 +60,14 @@ class Starter_DB(QThread):
 
         if self.wizard_starter.status_vm == 0:
             self.wizard_starter.add_item("Waiting for Database \"wizards\" to power on...", "ORANGE")
-
-            while os.system(DOCKER_INFO) == None:
-                pass
             self.wizard_starter.status_db = os.system(DOCKER_DATABASE_START)
             if self.wizard_starter.status_db == 0:
                 self.wizard_starter.switch_buttons([Buttons.S, Buttons.STOP], True)
                 self.wizard_starter \
                     .add_item("Database \"wizards\" has been successfully started.", "GREEN")
+                if self.wizard_starter.AutomaticStart.checkState() == 2:
+
+                    self.wizard_starter.server()
             else:
                 self.wizard_starter.database_not_started()
         else:
@@ -80,6 +88,9 @@ class Starter_S(QThread):
             if self.wizard_starter.status_s == 0:
                 self.wizard_starter.switch_buttons([Buttons.P, Buttons.STOP], True)
                 self.wizard_starter.add_item("Server \"WizardApp\" has been successfully started.", "GREEN")
+                if self.wizard_starter.AutomaticStart.checkState() == 2:
+
+                    self.wizard_starter.proxy()
             else:
                 self.wizard_starter.server_not_started()
         else:
@@ -102,6 +113,10 @@ class Starter_P(QThread):
             if self.wizard_starter.status_p == 0:
                 self.wizard_starter.add_item("Proxy \"WizardAppGrapQL\" has been successfully started.", "GREEN")
                 self.wizard_starter.switch_buttons([Buttons.C, Buttons.STOP], True)
+
+                if self.wizard_starter.AutomaticStart.checkState() == 2:
+
+                    self.wizard_starter.client()
             else:
                 self.wizard_starter.proxy_not_started()
         else:
@@ -153,9 +168,10 @@ class Stop_VM(QThread):
         if status == 0:
             self.wizard_starter.add_item("VM \"%s\" has been successfully stopped." % DOCKER_MACHINE_NAME, "RED")
         else:
-            self.wizard_starter.add_item("VM \"%s\" has not been stopped or already stopped." % DOCKER_MACHINE_NAME, "RED")
+            self.wizard_starter.add_item("VM \"%s\" has not been stopped or already stopped." % DOCKER_MACHINE_NAME,
+                                         "RED")
 
-        self.wizard_starter.switch_buttons([Buttons.STOP, Buttons.START], True)
+        self.wizard_starter.switch_buttons([Buttons.STOP, Buttons.START, Buttons.CHECK], True)
 
 
 class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
@@ -198,6 +214,7 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.ClientPortInput.setText('http://' + DOCKER_MACHINE_HOST + ':' + self.client_port)
         self.ClientPortInput.setReadOnly(True)
 
+
     def start(self):
         self.Starter_VM.start()
 
@@ -229,6 +246,7 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.Proxy.setDisabled(True) if not case else self.Proxy.setEnabled(True)
             self.Client.setDisabled(True) if not case else self.Client.setEnabled(True)
             self.Stop.setDisabled(True) if not case else self.Stop.setEnabled(True)
+            self.AutomaticStart.setDisabled(True) if not case else self.AutomaticStart.setEnabled(True)
         else:
             for i in array:
                 if i.name == "START":
@@ -243,6 +261,8 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
                     self.Client.setDisabled(True) if not case else self.Client.setEnabled(True)
                 if i.name == "STOP":
                     self.Stop.setDisabled(True) if not case else self.Stop.setEnabled(True)
+                if i.name == "CHECK":
+                    self.AutomaticStart.setDisabled(True) if not case else self.AutomaticStart.setEnabled(True)
 
     def vm_not_started(self):
         self.switch_buttons([Buttons.START, Buttons.STOP], True)
@@ -277,18 +297,24 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.server_docker_run = self.server_docker_run + " -e " + 'PASSWORD=' + server['PASSWORD']
             self.server_docker_run = self.server_docker_run + " -e " + 'SECRET=' + server['SECRET']
             self.server_docker_run = self.server_docker_run + " -e " + 'EXPIRED=' + str(server['EXPIRED'])
-            self.server_docker_run = self.server_docker_run + " --rm -p %s:8080 --name wizard-app wizard" % str(server['PORT'])
+            self.server_docker_run = self.server_docker_run + " --rm -p %s:8080 --name wizard-app wizard" % str(
+                server['PORT'])
             self.server_port = str(server['PORT'])
 
             self.proxy_docker_run = "docker run -d"
-            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVURL=http://' + DOCKER_MACHINE_HOST + ':' + str(server['PORT'])
-            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVINURL=http://' + DOCKER_MACHINE_HOST + ':' + str(client['PORT'])
-            self.proxy_docker_run = self.proxy_docker_run + " --rm -p %s:8081 --name my-running-app my-golang-app" % str(proxy['PORT'])
+            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVURL=http://' + DOCKER_MACHINE_HOST + ':' + str(
+                server['PORT'])
+            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVINURL=http://' + DOCKER_MACHINE_HOST + ':' + str(
+                client['PORT'])
+            self.proxy_docker_run = self.proxy_docker_run + " --rm -p %s:8081 --name my-running-app my-golang-app" % str(
+                proxy['PORT'])
             self.proxy_port = str(proxy['PORT'])
 
             self.client_docker_run = "docker run -d"
-            self.client_docker_run = self.client_docker_run + " -e " + 'SERVER_URL=http://' + DOCKER_MACHINE_HOST + ':' + str(proxy['PORT']) + "/query"
-            self.client_docker_run = self.client_docker_run + " --rm -p %s:3000 --name wizard-front-app wizard-front" % str(client['PORT'])
+            self.client_docker_run = self.client_docker_run + " -e " + 'SERVER_URL=http://' + DOCKER_MACHINE_HOST + ':' + str(
+                proxy['PORT']) + "/query"
+            self.client_docker_run = self.client_docker_run + " --rm -p %s:3000 --name wizard-front-app wizard-front" % str(
+                client['PORT'])
             self.client_port = str(client['PORT'])
 
 
@@ -301,4 +327,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-# pyinstaller --onefile --icon=wizard.ico --noconsole WizardAppStarter.pyw
+# pyinstaller --onefile --icon=wizard.ico --noconsole WizardAppStarter.py
+#

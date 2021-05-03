@@ -1,0 +1,11 @@
+client:
+  PORT: 3000
+proxy:
+  PORT: 8081
+server:
+  EXPIRED: 86400000
+  PASSWORD: postgres
+  PORT: 8080
+  SECRET: wizardSecretKey
+  URLDTBS: jdbc:postgresql://192.168.99.102:5432/wizards1
+  USR: postgres

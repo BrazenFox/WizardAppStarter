@@ -1,13 +1,12 @@
 import os
 import sys
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import QThread
 import webbrowser
-import json
+from enum import Enum
+import yaml
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QThread
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QListWidgetItem
-
-from enum import Enum
 
 import design
 
@@ -266,8 +265,8 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
         self.add_item("Client \"WizardAppFront\" has not been started.", "RED")
 
     def set_settings(self):
-        with open('settings.json') as json_file:
-            data = json.load(json_file)
+        with open('settings.yaml') as yaml_file:
+            data = yaml.load(yaml_file, Loader=yaml.FullLoader)
             server = data['server']
             proxy = data['proxy']
             client = data['client']
@@ -277,20 +276,20 @@ class WizardStarter(QtWidgets.QMainWindow, design.Ui_MainWindow):
             self.server_docker_run = self.server_docker_run + " -e " + 'USR=' + server['USR']
             self.server_docker_run = self.server_docker_run + " -e " + 'PASSWORD=' + server['PASSWORD']
             self.server_docker_run = self.server_docker_run + " -e " + 'SECRET=' + server['SECRET']
-            self.server_docker_run = self.server_docker_run + " -e " + 'EXPIRED=' + server['EXPIRED']
-            self.server_docker_run = self.server_docker_run + " --rm -p %s:8080 --name wizard-app wizard" % server['PORT']
-            self.server_port = server['PORT']
+            self.server_docker_run = self.server_docker_run + " -e " + 'EXPIRED=' + str(server['EXPIRED'])
+            self.server_docker_run = self.server_docker_run + " --rm -p %s:8080 --name wizard-app wizard" % str(server['PORT'])
+            self.server_port = str(server['PORT'])
 
             self.proxy_docker_run = "docker run -d"
-            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVURL=http://' + DOCKER_MACHINE_HOST + ':' + server['PORT']
-            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVINURL=http://' + DOCKER_MACHINE_HOST + ':' + client['PORT']
-            self.proxy_docker_run = self.proxy_docker_run + " --rm -p %s:8081 --name my-running-app my-golang-app" % proxy['PORT']
-            self.proxy_port = proxy['PORT']
+            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVURL=http://' + DOCKER_MACHINE_HOST + ':' + str(server['PORT'])
+            self.proxy_docker_run = self.proxy_docker_run + " -e " + 'ENVINURL=http://' + DOCKER_MACHINE_HOST + ':' + str(client['PORT'])
+            self.proxy_docker_run = self.proxy_docker_run + " --rm -p %s:8081 --name my-running-app my-golang-app" % str(proxy['PORT'])
+            self.proxy_port = str(proxy['PORT'])
 
             self.client_docker_run = "docker run -d"
-            self.client_docker_run = self.client_docker_run + " -e " + 'SERVER_URL=http://' + DOCKER_MACHINE_HOST + ':' + proxy['PORT'] + "/query"
-            self.client_docker_run = self.client_docker_run + " --rm -p %s:3000 --name wizard-front-app wizard-front" % client['PORT']
-            self.client_port = client['PORT']
+            self.client_docker_run = self.client_docker_run + " -e " + 'SERVER_URL=http://' + DOCKER_MACHINE_HOST + ':' + str(proxy['PORT']) + "/query"
+            self.client_docker_run = self.client_docker_run + " --rm -p %s:3000 --name wizard-front-app wizard-front" % str(client['PORT'])
+            self.client_port = str(client['PORT'])
 
 
 def main():

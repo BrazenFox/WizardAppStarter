@@ -328,4 +328,5 @@ def main():
 if __name__ == '__main__':
     main()
 # pyinstaller --onefile --icon=wizard.ico --noconsole WizardAppStarter.py
-#
+# pyinstaller --icon=wizard.ico --noconsole WizardAppStarter.py
+#pyinstaller/building makespec.py --noconsole --icon="wizard.ico" --name="Wizard starter" WizardAppStarter.py

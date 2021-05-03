@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-
+import images
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -114,7 +114,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowIcon(QtGui.QIcon('wizard.ico'))
+        MainWindow.setWindowIcon(QtGui.QIcon(':wizard.ico'))
         MainWindow.setWindowTitle(_translate("MainWindow", "Wizard starter"))
         self.Stop.setText(_translate("MainWindow", "Stop"))
         self.ProxyPortText.setText(_translate("MainWindow", "Proxy port:"))

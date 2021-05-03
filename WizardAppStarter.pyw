@@ -301,4 +301,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-# pyinstaller --onefile --icon=wizard.ico --noconsole main.pyw
+# pyinstaller --onefile --icon=wizard.ico --noconsole WizardAppStarter.pyw
